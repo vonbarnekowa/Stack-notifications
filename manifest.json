@@ -1,0 +1,17 @@
+{
+    "manifest_version": 2,
+    "name": "Stackoverflow notifications",
+    "version": "0.1",
+    "background": {
+        "scripts": ["background.js"],
+        "persistent": true
+    },
+    "permissions": [
+        "storage",
+        "contextMenus"
+    ],
+    "icons": {
+        "16": "icon.png"
+    },
+    "offline_enabled": false
+}
