@@ -8,8 +8,18 @@
     },
     "permissions": [
         "storage",
-        "contextMenus"
+        "notifications",
+        "contextMenus",
+        "identity",
+        "https://api.stackexchange.com/*"
     ],
+    "oauth2": {
+        "client_id": "7951",
+        "scopes": [
+            "no_expiry",
+            "read_inbox"
+        ]
+    },
     "icons": {
         "16": "icon.png"
     },
