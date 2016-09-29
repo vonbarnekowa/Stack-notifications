@@ -1,0 +1,32 @@
+html {
+    width: 260px !important;
+}
+
+div#content {
+   padding: 10px; 
+}
+
+div#content > header > h6,
+div#content > header > label {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+div#content > header > h6 {
+    width: calc(78% - 10px) !important;
+    margin: 5px;
+    font-weight: 400;
+}
+
+div#content > header > label,
+div#content > input.mdl-switch {
+    width: 20% !important;
+}
+
+div#content > button {
+    width: 100%;
+    display: flex;
+    margin: 20px auto 0px auto !important;
+    font-size: 12px;
+    justify-content: center;
+}
