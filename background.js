@@ -1,14 +1,63 @@
-const KEY = "9VUiWJXpfMRsOtNEMh3)UQ((";
-function login() {
-    var manifest = chrome.runtime.getManifest();
-    var clientId = encodeURIComponent(manifest.oauth2.client_id);
-    var scopes = encodeURIComponent(manifest.oauth2.scopes.join(','));
-    var redirectUri = encodeURIComponent("https://" + chrome.runtime.id + ".chromiumapp.org/provider_cb");
-    var url = "https://stackexchange.com/oauth/dialog" +
-        "?client_id=" + clientId +
-        "&redirect_uri=" + redirectUri +
-        "&scope=" + scopes;
+const manifest = chrome.runtime.getManifest();
+const config = {
+    id: chrome.runtime.id,
+    storage: chrome.storage.local,
+    manifest: manifest,
+    name: manifest.name,
+    iconUrl: "chrome-extension://" + chrome.runtime.id + "/icons/se158.png",
+    clientId: encodeURIComponent(manifest.oauth2.client_id),
+    scope: encodeURIComponent(manifest.oauth2.scopes.join(",")),
+    redirectUri: encodeURIComponent("https://" + chrome.runtime.id + ".chromiumapp.org/provider_cb"),
+    loginUrl: "https://stackexchange.com/oauth/dialog",
+    key: "9VUiWJXpfMRsOtNEMh3)UQ(("
+}
 
+function getToken(callback) {
+    config.storage.get("token", function (obj) {
+        const token = obj.token;
+        callback(token);
+    });
+}
+
+function setToken(newToken) {
+    config.storage.set({"token": newToken});
+}
+
+function decodeHTML(uncodedText) {
+    var htmlBlock = document.createElement('textarea');
+    htmlBlock.innerHTML = uncodedText;
+    decodedText = htmlBlock.textContent;
+    htmlBlock.remove();
+
+    return decodedText;
+}
+
+function showNotif(id, title, message, iconUrl, contextMessage = null) {
+    chrome.notifications.create(id, {
+        title: title,
+        message: message,
+        contextMessage: contextMessage,
+        type: "basic",
+        isClickable: false,
+        iconUrl: iconUrl
+    }, function (notificationId) {
+        chrome.notifications.onClicked.addListener(function (notificationId) {
+            chrome.notifications.onClicked.addListener(function (notificationId) {
+                var index = getIndexInArray(inboxNotif, notificationId);
+                if (index >= 0) {
+                    chrome.tabs.create({url: inboxNotif[index].link});
+                }
+                chrome.notifications.clear(notificationId);
+            });
+        });
+    });
+}
+
+function login() {
+    var url = config.loginUrl +
+        "?client_id=" + config.clientId +
+        "&redirect_uri=" + config.redirectUri +
+        "&scope=" + config.scope;
     chrome.identity.launchWebAuthFlow({
             "url": url,
             "interactive": true
@@ -16,168 +65,140 @@ function login() {
         function (redirectUrl) {
             if (redirectUrl) {
                 var vars = redirectUrl.split("#access_token=");
-                var storage = chrome.storage.local;
-                var obj = {};
-                obj["token"] = vars[1];
-                storage.set(obj);
-                chrome.notifications.create("login-success", {
-                    title: "Stack notifications",
-                    message: "You've got successfuly logged in.",
-                    type: "basic",
-                    iconUrl: "chrome-extension://" + chrome.runtime.id + "/icons/se158.png"
-                }, function () {
-                });
-                return;
+                setToken(vars[1]);
+                showNotif("login-success", config.name, "You've got successfuly logged in.", config.iconUrl);
             } else {
-                chrome.notifications.create("login-error", {
-                    title: "Stack notifications",
-                    message: "There was an error log you in.",
-                    type: "basic",
-                    iconUrl: "chrome-extension://" + chrome.runtime.id + "/icons/se158.png"
-                }, function () {
-                });
+                showNotif("login-error", config.name, "There was an error log you in.", config.iconUrl);
             }
         }
     );
 }
 
 function logout(token) {
-    if (token.token) {
+    if (token) {
         var xhr = new XMLHttpRequest();
         xhr.open("GET", "https://api.stackexchange.com/2.2/access-tokens/" + token + "/invalidate", false);
         xhr.send();
         if (xhr.status == 200) {
-            chrome.storage.local.remove("token")
-            chrome.notifications.create("login-success", {
-                title: "Stack notifications",
-                message: "You've got successfuly logged out.",
-                type: "basic",
-                iconUrl: "chrome-extension://" + chrome.runtime.id + "/icons/se158.png"
-            }, function () {
+            config.storage.remove("token", function () {
+                showNotif("logout-success", config.name, "You've got successfuly logged out.", config.iconUrl);
             });
         } else {
-            chrome.notifications.create("logout-error", {
-                title: "Stack notifications",
-                message: "There was an error log you out.",
-                type: "basic",
-                iconUrl: "chrome-extension://" + chrome.runtime.id + "/icons/se158.png"
-            }, function () {
-            });
+            showNotif("logout-error", config.name, "There was an error log you out.", config.iconUrl);
         }
     }
-}
-
-function init() {
-    chrome.storage.local.get("token", function (token) {
-        if (token.token) {
-            chrome.contextMenus.create({
-                "id": "1",
-                "title": "Stack Exchange log out",
-                "type": "normal",
-                "contexts": ["all"],
-                "onclick": function () {
-                    logout(token);
-                }
-            });
-            current();
-        } else {
-            chrome.contextMenus.create({
-                "id": "1",
-                "title": "Stack Exchange log in",
-                "type": "normal",
-                "contexts": ["all"],
-                "onclick": function () {
-                    login();
-                }
-            });
-            login();
-            current();
-        }
-    });
 }
 
 function getInbox(token) {
     var xhr = new XMLHttpRequest();
     if (token) {
-        xhr.open("GET", "https://api.stackexchange.com/2.2/inbox/unread?key=" + KEY + "&access_token=" + token.token, true);
+        xhr.open("GET", "https://api.stackexchange.com/2.2/inbox/unread?key=" + config.key + "&access_token=" + token, true);
         xhr.onload = function (e) {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
                     notifications = JSON.parse(xhr.responseText).items;
                     for (var notificationId in notifications) {
                         var notification = notifications[notificationId];
-                        if(showedNotifId.indexOf(notification.link) < 0) {
-                            chrome.notifications.create(notification.link, {
-                                title: decodeHTML(notification.site.name),
-                                message: decodeHTML(notification.title),
-                                contextMessage: notification.item_type,
-                                type: "basic",
-                                iconUrl: notification.site.icon_url,
-                                isClickable: true
-                            }, function (id) {
-                                showedNotifId.push(id);
-                                chrome.notifications.onClicked.addListener(function (url) {
-                                    chrome.tabs.create({url: url});
-                                    chrome.notifications.clear(id);
-                                });
-                            });
+                        console.log(getIndexInArray(inboxNotif, notification.creation_date));
+                        if (getIndexInArray(inboxNotif, notification.creation_date) == -1) {
+                            inboxNotif.push({id: notification.creation_date, link: notification.link});
+                            showNotif(notification.creation_date.toString(), decodeHTML(notification.site.name), decodeHTML(notification.title), notification.site.icon_url, notification.item_type);
                         }
                     }
                 } else {
                     console.error(xhr.statusText);
+
+                    return;
                 }
             }
         };
         xhr.onerror = function (e) {
             console.error(xhr.statusText);
+
+            return;
         };
         xhr.send(null);
     } else {
         console.error("No token in getInbox.");
+
+        return;
     }
 }
 
-function current() {
-    /*chrome.notifications.create("1", {title: "Stack notifications", message: "message", type: "basic", iconUrl: "chrome-extension://" + chrome.runtime.id + "/icons/se158.png"}, function(id){
+function getIndexInArray(array, notificationId) {
+    for (var i = 0; i < array.length; i++) {
+        if (array[i].id === notificationId) {
 
-     });*/
-    chrome.storage.local.get("token", function (token) {
-        if (token.token) {
-            getInbox(token);
-            chrome.contextMenus.update(
-                "1",
-                {
-                    "title": "Stack Exchange log out",
-                    "onclick": function () {
-                        logout(token);
-                    }
-                }
-            );
-        } else {
-            chrome.contextMenus.update(
-                "1",
-                {
-                    "title": "Stack Exchange log in",
-                    "onclick": function () {
-                        login();
-                    }
-                }
-            );
+            return i;
         }
-    });
+    }
+
+    return -1;
+}
+
+function current(token) {
+    if (token) {
+        chrome.contextMenus.update(
+            "1",
+            {
+                "title": "Stack Exchange log out",
+                "onclick": function () {
+                    getToken(logout);
+                }
+            }
+        );
+        getToken(getInbox);
+    } else {
+        chrome.contextMenus.update(
+            "1",
+            {
+                "title": "Stack Exchange log in",
+                "onclick": function () {
+                    login();
+                }
+            }
+        );
+    }
     setTimeout(function () {
-        current();
+        getToken(current);
     }, 5000);
 }
 
-function decodeHTML(text) {
-    var htmlBlock = document.createElement('textarea');
-    htmlBlock.innerHTML = text;
-    test = htmlBlock.textContent;
-    htmlBlock.remove();
-    
-    return test;
+function init(token) {
+    if (token) {
+        chrome.contextMenus.create({
+            "id": "1",
+            "title": "Stack Exchange log out",
+            "type": "normal",
+            "contexts": ["all"],
+            "onclick": function () {
+                getToken(logout);
+            }
+        });
+        getToken(current);
+    } else {
+        chrome.contextMenus.create({
+            "id": "1",
+            "title": "Stack Exchange log in",
+            "type": "normal",
+            "contexts": ["all"],
+            "onclick": function () {
+                login();
+            }
+        });
+        login();
+        getToken(current);
+    }
+    chrome.contextMenus.create({
+        "id": "report-bug",
+        "title": "Report a bug",
+        "type": "normal",
+        "contexts": ["all"],
+        "onclick": function () {
+            chrome.tabs.create({url: "https://github.com/fralec/SE-chrome-ext/issues/new"});
+        }
+    });
 }
 
-init();
-var showedNotifId = new Array();
+getToken(init);
+var inboxNotif = [];
