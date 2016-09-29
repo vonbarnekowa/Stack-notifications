@@ -42,13 +42,11 @@ function showNotif(id, title, message, iconUrl, contextMessage = null) {
         iconUrl: iconUrl
     }, function (notificationId) {
         chrome.notifications.onClicked.addListener(function (notificationId) {
-            chrome.notifications.onClicked.addListener(function (notificationId) {
-                var index = getIndexInArray(inboxNotif, notificationId);
-                if (index >= 0) {
-                    chrome.tabs.create({url: inboxNotif[index].link});
-                }
-                chrome.notifications.clear(notificationId);
-            });
+            var index = getIndexInArray(inboxNotif, notificationId);
+            if (index >= 0) {
+                chrome.tabs.create({url: inboxNotif[index].link});
+            }
+            chrome.notifications.clear(notificationId);
         });
     });
 }
@@ -99,7 +97,6 @@ function getInbox(token) {
                     notifications = JSON.parse(xhr.responseText).items;
                     for (var notificationId in notifications) {
                         var notification = notifications[notificationId];
-                        console.log(getIndexInArray(inboxNotif, notification.creation_date));
                         if (getIndexInArray(inboxNotif, notification.creation_date) == -1) {
                             inboxNotif.push({id: notification.creation_date, link: notification.link});
                             showNotif(notification.creation_date.toString(), decodeHTML(notification.site.name), decodeHTML(notification.title), notification.site.icon_url, notification.item_type);
@@ -127,7 +124,7 @@ function getInbox(token) {
 
 function getIndexInArray(array, notificationId) {
     for (var i = 0; i < array.length; i++) {
-        if (array[i].id === notificationId) {
+        if (array[i].id == notificationId) {
 
             return i;
         }
