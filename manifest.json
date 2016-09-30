@@ -5,6 +5,7 @@
     "version_name": "0.1.2 beta",
     "description": "Tool to get Chrome notifications for Stack Exchange.",
     "author": "Fralec",
+    "homepage_url": "https://fralec.github.io/Stack-notifications",
     "background": {
         "scripts": ["background.js"],
         "persistent": true
