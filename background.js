@@ -9,7 +9,8 @@ const config = {
     scope: encodeURIComponent(manifest.oauth2.scopes.join(",")),
     redirectUri: encodeURIComponent("https://" + chrome.runtime.id + ".chromiumapp.org/provider_cb"),
     loginUrl: "https://stackexchange.com/oauth/dialog",
-    key: "9VUiWJXpfMRsOtNEMh3)UQ(("
+    key: "9VUiWJXpfMRsOtNEMh3)UQ((",
+    issueUrl: "https://github.com/fralec/Stack-notifications/issues/new"
 }
 
 function getToken(callback) {
@@ -43,7 +44,8 @@ function showNotif(id, title, message, iconUrl, contextMessage = null) {
     }, function (notificationId) {
         chrome.notifications.onClicked.addListener(function (notificationId) {
             var index = getIndexInArray(inboxNotif, notificationId);
-            if (index >= 0) {
+            if (index >= 0 && inboxNotif[index].wasShowed == false) {
+                inboxNotif[index].wasShowed == true;
                 chrome.tabs.create({url: inboxNotif[index].link});
             }
             chrome.notifications.clear(notificationId);
@@ -98,7 +100,7 @@ function getInbox(token) {
                     for (var notificationId in notifications) {
                         var notification = notifications[notificationId];
                         if (getIndexInArray(inboxNotif, notification.creation_date) == -1) {
-                            inboxNotif.push({id: notification.creation_date, link: notification.link});
+                            inboxNotif.push({id: notification.creation_date, link: notification.link, wasShowed: false});
                             showNotif(notification.creation_date.toString(), decodeHTML(notification.site.name), decodeHTML(notification.title), notification.site.icon_url, notification.item_type);
                         }
                     }
@@ -135,26 +137,7 @@ function getIndexInArray(array, notificationId) {
 
 function current(token) {
     if (token) {
-        chrome.contextMenus.update(
-            "1",
-            {
-                "title": "Stack Exchange log out",
-                "onclick": function () {
-                    getToken(logout);
-                }
-            }
-        );
         getToken(getInbox);
-    } else {
-        chrome.contextMenus.update(
-            "1",
-            {
-                "title": "Stack Exchange log in",
-                "onclick": function () {
-                    login();
-                }
-            }
-        );
     }
     setTimeout(function () {
         getToken(current);
@@ -163,26 +146,8 @@ function current(token) {
 
 function init(token) {
     if (token) {
-        chrome.contextMenus.create({
-            "id": "1",
-            "title": "Stack Exchange log out",
-            "type": "normal",
-            "contexts": ["all"],
-            "onclick": function () {
-                getToken(logout);
-            }
-        });
         getToken(current);
     } else {
-        chrome.contextMenus.create({
-            "id": "1",
-            "title": "Stack Exchange log in",
-            "type": "normal",
-            "contexts": ["all"],
-            "onclick": function () {
-                login();
-            }
-        });
         login();
         getToken(current);
     }
@@ -192,7 +157,7 @@ function init(token) {
         "type": "normal",
         "contexts": ["all"],
         "onclick": function () {
-            chrome.tabs.create({url: "https://github.com/fralec/SE-chrome-ext/issues/new"});
+            chrome.tabs.create({url: config.issueUrl});
         }
     });
 }
