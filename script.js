@@ -1,4 +1,4 @@
-function run() {
+function setup() {
     chrome.storage.local.get("token", function (obj) {
         if (obj.token) {
             document.querySelector("button").innerHTML = "Stack Exchange log out";
@@ -6,22 +6,25 @@ function run() {
             document.querySelector("button").innerHTML = "Stack Exchange log in";
         }
     });
-    setTimeout(function () {
-        run();
-    }, 5000);
 }
 
 function buttonClick() {
     chrome.storage.local.get("token", function (obj) {
         if (obj.token) {
             chrome.extension.getBackgroundPage().getToken(chrome.extension.getBackgroundPage().logout);
-            document.querySelector("button").innerHTML = "Stack Exchange log in";
         } else {
             chrome.extension.getBackgroundPage().login();
-            document.querySelector("button").innerHTML = "Stack Exchange log out";
         }
     });
 }
 
-run();
+setup();
 document.querySelector("button").addEventListener("click", buttonClick, false);
+chrome.storage.onChanged.addListener(function(obj, namespace) {
+    console.log(obj);
+    if (obj.token.newValue) {
+        document.querySelector("button").innerHTML = "Stack Exchange log out";
+    } else {
+        document.querySelector("button").innerHTML = "Stack Exchange log in";
+    }
+});
