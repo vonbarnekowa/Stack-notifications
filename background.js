@@ -45,7 +45,7 @@ function showNotif(id, title, message, iconUrl, contextMessage = null) {
         chrome.notifications.onClicked.addListener(function (notificationId) {
             var index = getIndexInArray(inboxNotif, notificationId);
             if (index >= 0 && inboxNotif[index].wasShowed == false) {
-                inboxNotif[index].wasShowed == true;
+                inboxNotif[index].wasShowed = true;
                 chrome.tabs.create({url: inboxNotif[index].link});
             }
             chrome.notifications.clear(notificationId);
