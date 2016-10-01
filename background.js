@@ -45,7 +45,7 @@ function showNotif(id, title, message, iconUrl, contextMessage = null) {
         chrome.notifications.onClicked.addListener(function (notificationId) {
             var index = getIndexInArray(inboxNotif, notificationId);
             if (index >= 0 && inboxNotif[index].wasShowed == false) {
-                inboxNotif[index].wasShowed == true;
+                inboxNotif[index].wasShowed = true;
                 chrome.tabs.create({url: inboxNotif[index].link});
             }
             chrome.notifications.clear(notificationId);
@@ -96,6 +96,7 @@ function getInbox(token) {
         xhr.onload = function (e) {
             if (xhr.readyState === 4) {
                 if (xhr.status === 200) {
+                    isError = false;
                     notifications = JSON.parse(xhr.responseText).items;
                     for (var notificationId in notifications) {
                         var notification = notifications[notificationId];
@@ -104,7 +105,20 @@ function getInbox(token) {
                             showNotif(notification.creation_date.toString(), decodeHTML(notification.site.name), decodeHTML(notification.title), notification.site.icon_url, notification.item_type);
                         }
                     }
+                    if (notifications.length == 0) {
+                        inboxNotif = [];
+                    }
+                } else if (xhr.status === 403 || xhr.status === 402) {
+                    if (!isError) {
+                        isError = true;
+                        showNotif(xhr.status.toString(), "Error communicating", "An error occurred while communicating with the server.", config.iconUrl);
+                    }
+                    logout();
                 } else {
+                    if (!isError) {
+                        isError = true;
+                        showNotif(xhr.status.toString(), "Unknown error", "Please check your network connection.", config.iconUrl);
+                    }
                     console.error(xhr.statusText);
 
                     return;
@@ -112,6 +126,10 @@ function getInbox(token) {
             }
         };
         xhr.onerror = function (e) {
+            if (!isError) {
+                isError = true;
+                showNotif(xhr.status.toString(), "Unknown error", "Please check your network connection.", config.iconUrl);
+            }
             console.error(xhr.statusText);
 
             return;
@@ -164,3 +182,4 @@ function init(token) {
 
 getToken(init);
 var inboxNotif = [];
+var isError = false;
